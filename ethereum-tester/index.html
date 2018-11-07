@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<script src="web3.js"></script>
+<script src="jquery.min.js"></script>
+<script src="ethereumjs-tx.js"></script>
+<script>
+
+console.log('typeof EthJS:',               (typeof EthJS))
+console.log('Object.keys(EthJS):',         Object.keys(EthJS))
+console.log('typeof EthJS.Tx:',            (typeof EthJS.Tx))
+console.log('typeof EthJS.RLP:',           (typeof EthJS.RLP))
+console.log('typeof EthJS.Util:',          (typeof EthJS.Util))
+console.log('typeof EthJS.Buffer:',        (typeof EthJS.Buffer))
+console.log('typeof EthJS.Buffer.Buffer:', (typeof EthJS.Buffer.Buffer))
+
+
+$( document ).ready(function() {
+
+var abiArray=[{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"}];
+
+var web3 = new Web3(new Web3.providers.HttpProvider('https://api.myetherwallet.com/rop'))
+var sender = $('#senderAddress').val().trim()
+var contractAddress = $('#contractAddress').val().trim()
+var privateKey = new EthJS.Buffer.Buffer($('#privateKey').val().trim(), 'hex');
+var errorLog = $('#errorLog');
+
+
+$( "#sendEthereumBtn" ).click(function() {
+    var count = web3.eth.getTransactionCount(sender,function (err, nonce){
+    	var arrayOfLines = $('#receiversAddresses').val().split('\n');
+    	var sum = web3.toWei(parseFloat($('#ethAmount').val()), 'ether');
+	    $.each(arrayOfLines, function(index, receiver) {
+	    	receiver = receiver.trim();
+	    	const ethAddrMask = /^0x[a-f0-9]*$/gmi;
+	    	if(ethAddrMask.exec(receiver) !== null ){
+		        console.log("nonce: " + nonce);
+				composeEthTx(receiver, sum, nonce++);
+	    	}
+	    });
+	    
+    });
+
+});
+
+
+$( "#sendTokensBtn" ).click(function() {
+    var count = web3.eth.getTransactionCount(sender,function (err, nonce){
+    	var arrayOfLines = $('#receiversAddresses').val().split('\n');
+    	var sum=5;
+	    $.each(arrayOfLines, function(index, receiver) {
+	    	receiver = receiver.trim();
+	    	const ethAddrMask = /^0x[a-f0-9]*$/gmi;
+	    	if(ethAddrMask.exec(receiver) !== null ){
+		        console.log("nonce: " + nonce);
+		        // console.log("receiver: " + receiver);
+				composeTokenTx(receiver, sum++, nonce++);
+	    	}
+
+	    });
+	    
+    });
+
+});
+
+
+
+    function composeTokenTx(addrTo, sum, nonce){
+			var contract =  web3.eth.contract(abiArray).at(contractAddress);
+			var data = contract.transfer.getData(addrTo, 100*sum, {from: sender});
+			var gasPrice = 2500000000;
+			var gasLimit = 90000;
+
+			var rawTransactionDeclaration = {
+			  "from": sender,
+			  "nonce": web3.toHex(nonce),
+			  "gasPrice": web3.toHex(gasPrice),
+			  "gasLimit": web3.toHex(gasLimit),
+			  "to": contractAddress,
+			  "value": "0x0",
+			  "data": data,
+			  "chainId": 0x03
+			};
+
+			let tx = new EthJS.Tx(rawTransactionDeclaration)
+			tx.sign(privateKey)
+  			let serializedTx = tx.serialize().toString('hex')
+			web3.eth.sendRawTransaction('0x' + serializedTx, function(err, hash) {
+			  if (!err){
+			  	  console.log("https://ropsten.etherscan.io/tx/" + hash);
+			  	  $( "#sentTxs" ).append( "<a target=\"_blank\" href=https://ropsten.etherscan.io/tx/"+hash+">TokenTx: https://ropsten.etherscan.io/tx/"+hash+"</a><br/>" );
+			  } else
+			  	  errorLog.val( errorLog.val() + err + '\n');
+			      console.log(err);
+			});
+    }
+
+    function composeEthTx(addrTo, sum, nonce){
+			var gasPrice = 2500000000;
+			var gasLimit = 21000;
+
+			var rawTransactionDeclaration = {
+			  "from": sender,
+			  "nonce": web3.toHex(nonce),
+			  "gasPrice": web3.toHex(gasPrice),
+			  "gasLimit": web3.toHex(gasLimit),
+			  "to": addrTo,
+			  "value": web3.toHex(sum),
+			  "chainId": 0x03
+			};
+
+			let tx = new EthJS.Tx(rawTransactionDeclaration)
+			tx.sign(privateKey)
+  			let serializedTx = tx.serialize().toString('hex')
+
+			web3.eth.sendRawTransaction('0x' + serializedTx, function(err, hash) {
+			  if (!err){
+			  	  console.log("https://ropsten.etherscan.io/tx/" + hash);
+			  	  $( "#sentTxs" ).append( "<a target=\"_blank\" href=https://ropsten.etherscan.io/tx/"+hash+">EthTx: https://ropsten.etherscan.io/tx/"+hash+"</a><br/>" );
+			  } else
+			  	  errorLog.val( errorLog.val() + err + '\n');
+			      console.log(err);
+			});
+    }
+
+
+});
+
+</script>
+<body>
+
+<h1>WEB3J Tester!</h1>
+<br/>
+<label for="senderAddress">senderAddress:</label>
+<input type="text" value="0xd63a..." id="senderAddress" size="90" />
+<br/>
+<label for="privateKey">privateKey:</label>
+<input type="text" value="3CB64..." id="privateKey" size="90" />
+<br/>
+<label for="contractAddress">contractAddress:</label>
+<input type="text" value="0xE95C..." id="contractAddress" size="90" />
+<br/>
+<br/>
+<textarea id="receiversAddresses" cols="80" rows="10">
+0xf87c...
+0xcad....
+</textarea>
+<textarea id="errorLog" cols="80" rows="10">
+</textarea>
+<br/>
+<br/>
+<button id="sendTokensBtn" name="sendTokens" >sendTokens</button>
+<br/>
+<br/>
+<input type="number" value="0.01" id="ethAmount"/>
+<button id="sendEthereumBtn" name="sendEthereum" >sendEthereum</button>
+<br/>
+<div id="sentTxs"></div>
+</body>
+</html>
