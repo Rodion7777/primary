@@ -18,8 +18,8 @@ NEWLINE   = System.getProperty("line.separator")
 
 OUT.append(SEPARATOR)
 COLUMNS.each { column ->
-    OUT.append(column.name())
-    .append(SEPARATOR)
+    OUT.append("_."+column.name())
+            .append(SEPARATOR)
 }
 OUT.append(NEWLINE)
 
@@ -38,7 +38,7 @@ def printRow = { values, valueToString ->
 if (!TRANSPOSED) {
     ROWS.each {
         row -> printRow(COLUMNS, { FORMATTER.format(row, it)
-    }) }
+        }) }
 }
 else {
     def values = COLUMNS.collect { new ArrayList<String>() }
